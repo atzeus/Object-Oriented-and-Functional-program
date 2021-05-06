@@ -1,0 +1,121 @@
+import org.codehaus.groovy.runtime.GStringImpl
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
+plugins {
+    id 'scala'
+    id 'idea'
+}
+
+test {
+    useJUnitPlatform()
+    include "**/AllTests.class"
+}
+
+ext {
+    scalaMajorVersion = '2.13'
+    scalaVersion = "${scalaMajorVersion}.3" as GStringImpl
+}
+
+repositories {
+    flatDir {
+        dirs 'lib'
+    }
+
+    mavenCentral()
+}
+
+sourceSets.main.scala.srcDirs = ['src']
+sourceSets.test.scala.srcDirs = ['test']
+
+dependencies {
+    compile "org.scala-lang:scala-library:${scalaVersion}"
+    compile fileTree(include: ['*.jar'], dir: 'lib')
+    testImplementation("junit:junit:4.13")
+    testCompile("org.junit.vintage:junit-vintage-engine:5.6.0")
+    testCompile "org.scalatest:scalatest_${scalaMajorVersion}:3.0.8"
+    compile "org.scalacheck:scalacheck_${scalaMajorVersion}:1.14.3"
+}
+
+task(runIntREPL, dependsOn: 'classes', type: JavaExec) {
+    group = "Runnables"
+    main = "repls.RunREPL"
+    classpath = sourceSets.main.runtimeClasspath
+    args "IntREPL"
+    standardInput = System.in
+    outputs.upToDateWhen { false }
+}
+
+task(runMultiSetREPL, dependsOn: 'classes', type: JavaExec) {
+    group = "Runnables"
+    main = "repls.RunREPL"
+    classpath = sourceSets.main.runtimeClasspath
+    args "MultiSetREPL"
+    standardInput = System.in
+    outputs.upToDateWhen { false }
+}
+
+
+
+
+task zip(type: Zip) {
+    group = "prepareZipForSubmit"
+    description = "Zip your code for submission to Codegrade"
+
+    // To make sure you can always run this task
+    outputs.upToDateWhen { false }
+    dependsOn assemble
+    dependsOn testClasses
+    from fileTree(dir: '.')
+    include 'src/repls/**.scala'
+
+    archiveFileName = 'repls.zip'
+    destinationDir(file("$projectDir"))
+}
+
+
+tasks.withType(Test) {
+    group = "verification"
+    testLogging {
+        events  TestLogEvent.FAILED,
+                TestLogEvent.PASSED,
+                TestLogEvent.STANDARD_OUT
+    }
+}
+
+task spec(dependsOn: ['testClasses'], type: JavaExec) {
+  main = 'org.scalatest.tools.Runner'
+  args = ['-R', 'build/classes/scala/test', '-f','tests']
+  classpath = sourceSets.test.runtimeClasspath
+}
+
+task test4_1(type: Test) {
+    description="Run tests for assignment 4.1 (repls)"
+    filter {
+        includeTestsMatching "repls.ReplsTestSuite4_1"
+    }
+}
+
+task test4_2(type: Test) {
+    description="Run tests for assignment 4.2 (repls)"
+    filter {
+        includeTestsMatching "repls.ReplsTestSuite4_2"
+    }
+}
+
+task fraction4_1(type: JavaExec, dependsOn: classes) {
+    // To make sure you can always run this task
+    outputs.upToDateWhen { false }
+    main = 'repls.infrastructure.ReportFraction4_1'
+    classpath sourceSets.test.runtimeClasspath
+    classpath sourceSets.main.runtimeClasspath
+    classpath configurations.runtime
+}
+
+task fraction4_2(type: JavaExec, dependsOn: classes) {
+    // To make sure you can always run this task
+    outputs.upToDateWhen { false }
+    main = 'repls.infrastructure.ReportFraction4_2'
+    classpath sourceSets.test.runtimeClasspath
+    classpath sourceSets.main.runtimeClasspath
+    classpath configurations.runtime
+}
